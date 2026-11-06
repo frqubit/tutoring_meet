@@ -1,0 +1,63 @@
+import { redirect } from "@sveltejs/kit";
+import { DepositFetcher as DepositFetcherInternal } from "./backend/modules/deposit/Deposit.handlers";
+import { StudentFetcher as StudentFetcherInternal } from "./backend/modules/student/Student.handlers";
+import { ClientFetcher as ClientFetcherInternal } from "./backend/modules/client/Client.handlers";
+import { SessionFetcher as SessionFetcherInternal } from "./backend/modules/session/Session.handlers";
+import { AuthFetcher as AuthFetcherInternal } from "./backend/modules/auth/Auth.handlers";
+export type { FetcherOutput } from "./backend/utils/handler_utils";
+export { send_cookie_fetch } from "./index";
+import {
+  BACKEND_DOMAIN,
+  send_cookie_fetch,
+  SIGNIN_URL,
+  WEBSITE_URI,
+} from "$lib";
+import { browser } from "$app/environment";
+
+export const DepositFetcher = (fetch_: typeof fetch, loading_url: URL) =>
+  DepositFetcherInternal({
+    redirect,
+    loading_url,
+    fetch: fetch_,
+    domain: BACKEND_DOMAIN,
+  });
+
+export const StudentFetcher = (fetch_: typeof fetch, loading_url: URL) =>
+  StudentFetcherInternal({
+    redirect,
+    loading_url,
+    fetch: fetch_,
+    domain: BACKEND_DOMAIN,
+  });
+
+export const ClientFetcher = (fetch_: typeof fetch, loading_url: URL) =>
+  ClientFetcherInternal({
+    redirect,
+    loading_url,
+    fetch: fetch_,
+    domain: BACKEND_DOMAIN,
+  });
+
+export const SessionFetcher = (fetch_: typeof fetch, loading_url: URL) =>
+  SessionFetcherInternal({
+    redirect,
+    loading_url,
+    fetch: fetch_,
+    domain: BACKEND_DOMAIN,
+  });
+
+export const AuthFetcher = (fetch_: typeof fetch, loading_url: URL) =>
+  AuthFetcherInternal({
+    redirect,
+    loading_url,
+    fetch: fetch_,
+    domain: BACKEND_DOMAIN,
+  });
+
+type FetcherMaker<T> = (fetch_: typeof fetch, loading_url: URL) => T;
+
+export function FetcherWithDefaultClientSettings<T>(f: FetcherMaker<T>): T {
+  const url = URL.parse(browser ? window.location.href : WEBSITE_URI)!;
+
+  return f(send_cookie_fetch, url);
+}

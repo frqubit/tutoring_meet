@@ -1,0 +1,206 @@
+<script lang="ts">
+    import {
+        FetcherWithDefaultClientSettings,
+        ClientFetcher,
+        SessionFetcher,
+    } from "$lib/fetchers";
+    import { cents_to_dollar_string } from "$lib/utils/display_utils";
+    import {
+        get_next_month,
+        month_string_from_getMonth,
+    } from "$lib/utils/time_utils";
+    import { localUserInfo } from "$lib/utils/user_utils.svelte";
+
+    const userInfoPromise = localUserInfo();
+
+    async function get_past_invoices() {
+        const userInfo = await userInfoPromise;
+        const clientId = userInfo.value?.client?.id;
+        if (!clientId) return [];
+
+        const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
+        const invoices = await fetcher.FindAllDepositsOf({
+            params: { id: clientId },
+        });
+
+        return invoices.toReversed();
+    }
+
+    async function get_balance() {
+        const userInfo = await userInfoPromise;
+        const clientId = userInfo.value?.client?.id;
+        if (!clientId) return 0;
+
+        const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
+        const balance = await fetcher.GetBalanceOf({
+            params: { id: clientId },
+        });
+
+        return balance;
+    }
+
+    async function get_next_invoice() {
+        const userInfo = await userInfoPromise;
+        const clientId = userInfo.value?.client?.id;
+        if (!clientId) return null;
+
+        const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
+        const charges = await fetcher.GetNextInvoiceOf({
+            params: { id: clientId },
+        });
+
+        return charges;
+    }
+
+    const pastInvoicesPromise = get_past_invoices();
+    const getBalancePromise = get_balance();
+    const nextInvoicePromise = get_next_invoice();
+
+    let showInvoiceDetails = $state(false);
+</script>
+
+<div
+    class="relative flex flex-col md:flex-row justify-start items-start w-full mt-8"
+>
+    {#await getBalancePromise}
+        <span class="text-6xl sm:text-7xl font-bold">$...</span>
+    {:then balance}
+        <span class="text-6xl sm:text-7xl font-bold"
+            >{cents_to_dollar_string(balance)}</span
+        >
+    {/await}
+
+    <div
+        class="contents md:flex flex-col justify-start items-start w-1/2 ml-auto"
+    >
+        <span class="text-xl sm:text-2xl font-light">
+            {#await nextInvoicePromise}
+                Next invoice on ...
+            {:then nextInvoice}
+                {#if nextInvoice == null}
+                    No invoice calculated
+                {:else}
+                    Next invoice on
+                    {month_string_from_getMonth(nextInvoice?.month_number)} 1st
+                {/if}
+            {/await}
+        </span>
+        <span class="text-xl sm:text-2xl font-light">
+            {#await nextInvoicePromise}
+                Estimated: ...
+            {:then nextInvoice}
+                {#if nextInvoice != null}
+                    Estimated: {cents_to_dollar_string(
+                        nextInvoice.charges.reduce(
+                            (agg, next) => agg + next.cents,
+                            0,
+                        ),
+                    )}
+                {/if}
+            {/await}
+        </span>
+        {#await nextInvoicePromise then nextInvoice}
+            <button
+                class="text-blue-500 hover:text-blue-700 active:text-blue-500 select-none"
+                onclick={() => (showInvoiceDetails = !showInvoiceDetails)}
+            >
+                {showInvoiceDetails ? "Hide Details" : "Show Details"}
+            </button>
+        {/await}
+    </div>
+
+    {#await nextInvoicePromise then nextInvoice}
+        {#if showInvoiceDetails}
+            <div
+                class="
+                    absolute
+                    -right-6 lg:right-0 top-full
+                    w-[calc(100vw+24px)] lg:w-full h-fit
+                    bg-white lg:border mt-3 lg:mt-4
+                    px-12 lg:px-8
+                    flex flex-col justify-start items-start
+                    lg:grid grid-cols-4
+                    invoice-grid
+                    text-md sm:text-2xl
+                "
+            >
+                {#if nextInvoice != null}
+                    {#each nextInvoice.charges as charge, i}
+                        <!-- <div
+                            class="flex flex-row justify-between items-start mx-4 text-2xl w-full"
+                        > -->
+                        <span class="text-xl sm:text-2xl w-full text-start"
+                            >{charge.name}</span
+                        >
+                        <div
+                            class="flex flex-row justify-start items-center w-full lg:contents"
+                        >
+                            <div
+                                class="flex flex-row-reverse justify-start items-start lg:contents"
+                            >
+                                <span class="text-end"
+                                    >{charge.date.toLocaleDateString()}</span
+                                >
+                                {#if charge.student_name != ""}
+                                    <span class="mr-1 text-md lg:hidden">,</span
+                                    >
+                                {/if}
+                                <span class="text-end"
+                                    >{charge.student_name}</span
+                                >
+                            </div>
+                            <span class="ml-auto lg:md-none block">
+                                {cents_to_dollar_string(charge.cents)}
+                            </span>
+                        </div>
+                        <hr
+                            class={`${i == nextInvoice.charges.length - 1 ? "invisible" : ""} w-full border-dashed my-2 lg:hidden`}
+                        />
+                    {/each}
+                {/if}
+
+                <hr class="w-full col-span-4" />
+                <div
+                    class="
+                        flex flex-row justify-between items-center w-full lg:contents
+                        my-4 lg:m-0
+                    "
+                >
+                    <span class="col-start-3 font-bold text-end">Total</span>
+                    <span class="block font-bold text-end">
+                        {cents_to_dollar_string(
+                            nextInvoice?.charges.reduce(
+                                (agg, next) => agg + next.cents,
+                                0,
+                            ) || 0,
+                        )}
+                    </span>
+                </div>
+            </div>
+        {/if}
+    {/await}
+</div>
+
+<div class="mt-8">
+    <span class="text-4xl">Past Invoices</span>
+    <hr />
+
+    {#await pastInvoicesPromise then pastInvoices}
+        {#each pastInvoices as invoice}
+            <div
+                class="flex flex-row justify-start items-start text-xl md:text-2xl mt-4"
+            >
+                <span>{invoice.date.toLocaleString()}</span>
+                <span class="ml-auto"
+                    >{cents_to_dollar_string(invoice.cents)}</span
+                >
+            </div>
+        {/each}
+    {/await}
+</div>
+
+<style>
+    /*.invoice-grid > span:not(:nth-child(4n + 1)):not {
+        text-align: end;
+    }*/
+</style>

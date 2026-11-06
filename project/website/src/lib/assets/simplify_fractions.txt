@@ -1,0 +1,20 @@
+%a=rand(2,10)
+%n=rand(1,9)
+%d=rand(n+1,10)
+Simplify if possible.
+#eq <
+%n2=a*n
+%d2=a*d
+#frac %n2 %d2
+> <
+#frac <
+#field %.INT
+> <
+#field %.INT
+> >
+%verify=<
+nuser=field(.INT,0)
+duser=field(.INT,1)
+and(eq(n,nuser),eq(d,duser))
+>
+#submit %verify

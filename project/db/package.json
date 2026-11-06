@@ -1,0 +1,23 @@
+{
+  "name": "db",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Awesome project developed with TypeORM.",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "start": "tsc && node build/index.js",
+    "typeorm": "./node_modules/.bin/typeorm",
+    "migrations": "tsc && typeorm migration:run -d build/data-source.js",
+    "reload_live": "./reload_live_db.sh"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.28"
+  }
+}

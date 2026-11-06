@@ -1,0 +1,11 @@
+{
+  "name": "monorepo",
+  "private": true,
+  "dependencies": {
+    "concurrently": "^10.0.6"
+  },
+  "scripts": {
+    "reload_live_db": "pnpm -F db reload_live",
+    "dev": "concurrently 'pnpm -F backend dev' 'pnpm -F website dev'"
+  }
+}

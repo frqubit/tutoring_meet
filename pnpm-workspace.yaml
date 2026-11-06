@@ -1,0 +1,9 @@
+packages:
+  - project/backend
+  - project/db
+  - project/website
+allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
+  esbuild: true
+  sqlite3: true
