@@ -61,3 +61,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /db.sql
 src/entities
 # batl.gitignore end DO NOT MODIFY
+
+pnpm-lock.yaml
