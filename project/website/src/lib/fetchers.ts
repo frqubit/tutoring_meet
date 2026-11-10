@@ -1,4 +1,4 @@
-import { redirect } from "@sveltejs/kit";
+import { isRedirect, redirect } from "@sveltejs/kit";
 import { DepositFetcher as DepositFetcherInternal } from "./backend/modules/deposit/Deposit.handlers";
 import { StudentFetcher as StudentFetcherInternal } from "./backend/modules/student/Student.handlers";
 import { ClientFetcher as ClientFetcherInternal } from "./backend/modules/client/Client.handlers";
@@ -14,9 +14,14 @@ import {
 } from "$lib";
 import { browser } from "$app/environment";
 
+const client_redirect: typeof redirect = (code, href) => {
+  window.location.href = href.toString();
+  throw new Error("Redirecting, no more execution");
+};
+
 export const DepositFetcher = (fetch_: typeof fetch, loading_url: URL) =>
   DepositFetcherInternal({
-    redirect,
+    redirect: browser ? client_redirect : redirect,
     loading_url,
     fetch: fetch_,
     domain: BACKEND_DOMAIN,
@@ -24,7 +29,7 @@ export const DepositFetcher = (fetch_: typeof fetch, loading_url: URL) =>
 
 export const StudentFetcher = (fetch_: typeof fetch, loading_url: URL) =>
   StudentFetcherInternal({
-    redirect,
+    redirect: browser ? client_redirect : redirect,
     loading_url,
     fetch: fetch_,
     domain: BACKEND_DOMAIN,
@@ -32,7 +37,7 @@ export const StudentFetcher = (fetch_: typeof fetch, loading_url: URL) =>
 
 export const ClientFetcher = (fetch_: typeof fetch, loading_url: URL) =>
   ClientFetcherInternal({
-    redirect,
+    redirect: browser ? client_redirect : redirect,
     loading_url,
     fetch: fetch_,
     domain: BACKEND_DOMAIN,
@@ -40,7 +45,7 @@ export const ClientFetcher = (fetch_: typeof fetch, loading_url: URL) =>
 
 export const SessionFetcher = (fetch_: typeof fetch, loading_url: URL) =>
   SessionFetcherInternal({
-    redirect,
+    redirect: browser ? client_redirect : redirect,
     loading_url,
     fetch: fetch_,
     domain: BACKEND_DOMAIN,
@@ -48,7 +53,7 @@ export const SessionFetcher = (fetch_: typeof fetch, loading_url: URL) =>
 
 export const AuthFetcher = (fetch_: typeof fetch, loading_url: URL) =>
   AuthFetcherInternal({
-    redirect,
+    redirect: browser ? client_redirect : redirect,
     loading_url,
     fetch: fetch_,
     domain: BACKEND_DOMAIN,

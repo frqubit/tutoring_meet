@@ -18,3 +18,7 @@ export const S3_BASE_PATH = DEV ? 'webdata/dev' : 'webdata/prod';
 export const S3_BUCKET = 'lessonresources-6a27ce93';
 
 export const MORE_ENV_FILE = DEV ? '.env.local' : '.env';
+
+export const COGNITO_CLIENT_ID = DEV
+  ? 'ug218asd0vm7sjjjt65hh6dlj'
+  : '2cq5ns7arvn12i9ll973hdj0f9';

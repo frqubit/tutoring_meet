@@ -1,5 +1,5 @@
 import type fetch_fn from 'node-fetch';
-import { BACKEND_DOMAIN, COGNITO_BASE_URI } from '../config';
+import { BACKEND_DOMAIN, COGNITO_BASE_URI, COGNITO_CLIENT_ID } from '../config';
 import { HandlerInfo, HandlerRecordToFetcherFns } from './handler_utils';
 
 interface FetcherConfig {
@@ -48,7 +48,7 @@ export class Fetcher {
   public signin_url(): string {
     const out = new URL('/login/continue', COGNITO_BASE_URI);
     out.search = new URLSearchParams({
-      client_id: '2cq5ns7arvn12i9ll973hdj0f9',
+      client_id: COGNITO_CLIENT_ID,
       response_type: 'code',
       scope: 'email+openid+phone',
       redirect_uri: new URL('/auth', BACKEND_DOMAIN).toString(),
