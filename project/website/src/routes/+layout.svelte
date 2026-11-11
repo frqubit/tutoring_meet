@@ -8,10 +8,10 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<div class={`w-full min-h-screen p-6`}>
+<div class={`w-full min-h-screen p-6 bg-background`}>
     {#if dev}
         <div
-            class="fixed top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none"
+            class="fixed top-0 left-0 z-10 w-full h-full flex items-center justify-center pointer-events-none"
         >
             <span
                 class="
