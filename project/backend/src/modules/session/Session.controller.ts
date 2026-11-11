@@ -24,10 +24,12 @@ import { SessionCompletion } from '@/src/entities/Session';
 import { AuthService } from '../auth/Auth.service';
 import { ClientService } from '../client/Client.service';
 import {
+  AuthProblem,
   execute_if_administrator,
   execute_if_authorized,
 } from '@/src/utils/auth_utils';
 import { StudentService } from '../student/Student.service';
+import { C_MYSELF } from '@/src/utils/constants';
 
 const MAX_RECURS = 20;
 
@@ -133,27 +135,27 @@ export class SessionController {
       req,
       res,
       async (data) => {
-        return execute_if_administrator(
+        return execute_if_authorized(
           this.authService,
           req,
           res,
-          async () => {
-            const session = await this.sessionService.findNextOfClient(
-              data.params.id,
-            );
+          async (authTkn) => {
+            const client_id = C_MYSELF.matches(data.params.id)
+              ? authTkn?.user?.userid
+              : data.params.id;
+
+            if (!client_id) return null;
+
+            const session =
+              await this.sessionService.findNextOfClient(client_id);
 
             return session;
           },
-          async (authTkn) => {
-            if (data.params.id != authTkn?.user?.userid) {
-              return null;
-            }
-
-            const session = await this.sessionService.findNextOfClient(
-              authTkn.user.userid,
+          (authTkn) => {
+            return (
+              C_MYSELF.matches(data.params.id) ||
+              data.params.id == authTkn?.user?.userid
             );
-
-            return session;
           },
         );
       },

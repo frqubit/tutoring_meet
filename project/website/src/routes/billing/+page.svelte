@@ -1,10 +1,12 @@
 <script lang="ts">
+    import { C_MYSELF } from "$lib/backend/utils/constants";
     import {
         FetcherWithDefaultClientSettings,
         ClientFetcher,
         SessionFetcher,
     } from "$lib/fetchers";
     import { cents_to_dollar_string } from "$lib/utils/display_utils";
+    import { ClientPromise } from "$lib/utils/promise_utils";
     import {
         get_next_month,
         month_string_from_getMonth,
@@ -13,48 +15,32 @@
 
     const userInfoPromise = localUserInfo();
 
-    async function get_past_invoices() {
-        const userInfo = await userInfoPromise;
-        const clientId = userInfo.value?.client?.id;
-        if (!clientId) return [];
-
+    const pastInvoicesPromise = new ClientPromise(async () => {
         const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
         const invoices = await fetcher.FindAllDepositsOf({
-            params: { id: clientId },
+            params: { id: C_MYSELF },
         });
 
         return invoices.toReversed();
-    }
+    }).else([]);
 
-    async function get_balance() {
-        const userInfo = await userInfoPromise;
-        const clientId = userInfo.value?.client?.id;
-        if (!clientId) return 0;
-
+    const balancePromise = new ClientPromise(async () => {
         const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
         const balance = await fetcher.GetBalanceOf({
-            params: { id: clientId },
+            params: { id: C_MYSELF },
         });
 
         return balance;
-    }
+    }).else(0);
 
-    async function get_next_invoice() {
-        const userInfo = await userInfoPromise;
-        const clientId = userInfo.value?.client?.id;
-        if (!clientId) return null;
-
+    const nextInvoicePromise = new ClientPromise(async () => {
         const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
         const charges = await fetcher.GetNextInvoiceOf({
-            params: { id: clientId },
+            params: { id: C_MYSELF },
         });
 
         return charges;
-    }
-
-    const pastInvoicesPromise = get_past_invoices();
-    const getBalancePromise = get_balance();
-    const nextInvoicePromise = get_next_invoice();
+    }).else(null);
 
     let showInvoiceDetails = $state(false);
 </script>
@@ -62,7 +48,7 @@
 <div
     class="relative flex flex-col md:flex-row justify-start items-start w-full mt-8"
 >
-    {#await getBalancePromise}
+    {#await balancePromise.resolver}
         <span class="text-6xl sm:text-7xl font-bold">$...</span>
     {:then balance}
         <span class="text-6xl sm:text-7xl font-bold"
@@ -74,7 +60,7 @@
         class="contents md:flex flex-col justify-start items-start w-1/2 ml-auto"
     >
         <span class="text-xl sm:text-2xl font-light">
-            {#await nextInvoicePromise}
+            {#await nextInvoicePromise.resolver}
                 Next invoice on ...
             {:then nextInvoice}
                 {#if nextInvoice == null}
@@ -86,7 +72,7 @@
             {/await}
         </span>
         <span class="text-xl sm:text-2xl font-light">
-            {#await nextInvoicePromise}
+            {#await nextInvoicePromise.resolver}
                 Estimated: ...
             {:then nextInvoice}
                 {#if nextInvoice != null}
@@ -99,7 +85,7 @@
                 {/if}
             {/await}
         </span>
-        {#await nextInvoicePromise then nextInvoice}
+        {#await nextInvoicePromise.resolver then nextInvoice}
             <button
                 class="text-blue-500 hover:text-blue-700 active:text-blue-500 select-none"
                 onclick={() => (showInvoiceDetails = !showInvoiceDetails)}
@@ -109,7 +95,7 @@
         {/await}
     </div>
 
-    {#await nextInvoicePromise then nextInvoice}
+    {#await nextInvoicePromise.resolver then nextInvoice}
         {#if showInvoiceDetails}
             <div
                 class="
@@ -185,7 +171,7 @@
     <span class="text-4xl">Past Invoices</span>
     <hr />
 
-    {#await pastInvoicesPromise then pastInvoices}
+    {#await pastInvoicesPromise.resolver then pastInvoices}
         {#each pastInvoices as invoice}
             <div
                 class="flex flex-row justify-start items-start text-xl md:text-2xl mt-4"

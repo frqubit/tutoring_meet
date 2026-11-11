@@ -2,6 +2,7 @@ import { BuiltinSerdeType } from '../../utils/serde_utils';
 import { HandlerInfo } from '../../utils/handler_utils';
 import { Fetcher, FetcherGenerator } from '../../utils/fetcher_utils';
 import { SessionCompletion } from '../../entities/Session.enum';
+import { C_MYSELF } from '../../utils/constants';
 
 export const PATH = 'client';
 
@@ -52,7 +53,9 @@ export const Handlers = {
   FindAllDepositsOf: new HandlerInfo({
     dev_key: 'find_all_deposits_of',
     call_variant: 'GET',
-    params: { id: BuiltinSerdeType.number },
+    params: {
+      id: BuiltinSerdeType.a_or_b(BuiltinSerdeType.number, C_MYSELF.serde()),
+    },
     output: BuiltinSerdeType.array(
       BuiltinSerdeType.object({
         id: BuiltinSerdeType.number,
@@ -109,7 +112,9 @@ export const Handlers = {
   FindAllFutureSessionsOf: new HandlerInfo({
     dev_key: 'find_all_future_sessions_of',
     call_variant: 'GET',
-    params: { id: BuiltinSerdeType.number },
+    params: {
+      id: BuiltinSerdeType.a_or_b(BuiltinSerdeType.number, C_MYSELF.serde()),
+    },
     output: BuiltinSerdeType.array(
       BuiltinSerdeType.object({
         id: BuiltinSerdeType.number,
@@ -134,14 +139,18 @@ export const Handlers = {
   GetBalanceOf: new HandlerInfo({
     dev_key: 'get_balance_of',
     call_variant: 'GET',
-    params: { id: BuiltinSerdeType.number },
+    params: {
+      id: BuiltinSerdeType.a_or_b(BuiltinSerdeType.number, C_MYSELF.serde()),
+    },
     output: BuiltinSerdeType.number,
   }),
 
   GetNextInvoiceOf: new HandlerInfo({
     dev_key: 'get_next_invoice_of',
     call_variant: 'GET',
-    params: { id: BuiltinSerdeType.number },
+    params: {
+      id: BuiltinSerdeType.a_or_b(BuiltinSerdeType.number, C_MYSELF.serde()),
+    },
     output: BuiltinSerdeType.nullable(
       BuiltinSerdeType.object({
         month_number: BuiltinSerdeType.number,

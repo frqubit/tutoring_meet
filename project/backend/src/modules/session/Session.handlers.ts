@@ -2,7 +2,8 @@ import { BuiltinSerdeType } from '../../utils/serde_utils';
 import { HandlerInfo } from '../../utils/handler_utils';
 import { FetcherGenerator } from '../../utils/fetcher_utils';
 import { SessionCompletion } from '../../entities/Session.enum';
-import { LatestVersion as LatestSessionNoteVersion } from '@/src/webdata/session_note';
+import { LatestVersion as LatestSessionNoteVersion } from '../../webdata/session_note';
+import { C_MYSELF } from '../../utils/constants';
 
 const SessionValue = BuiltinSerdeType.object({
   id: BuiltinSerdeType.number,
@@ -48,7 +49,9 @@ export const Handlers = {
   FindNextOfClient: new HandlerInfo({
     dev_key: 'find_next_of_client',
     call_variant: 'GET',
-    params: { id: BuiltinSerdeType.number },
+    params: {
+      id: BuiltinSerdeType.a_or_b(BuiltinSerdeType.number, C_MYSELF.serde()),
+    },
     output: BuiltinSerdeType.nullable(SessionValue),
   }),
 

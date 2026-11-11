@@ -1,21 +1,19 @@
 <script lang="ts">
+    import { C_MYSELF } from "$lib/backend/utils/constants";
     import {
         FetcherWithDefaultClientSettings,
         ClientFetcher,
     } from "$lib/fetchers";
     import { date_minutes_to_duration_string } from "$lib/utils/display_utils";
+    import { ClientPromise } from "$lib/utils/promise_utils";
     import { localUserInfo } from "$lib/utils/user_utils.svelte";
 
     const userInfoPromise = localUserInfo();
 
-    async function getNextSessions() {
-        const userInfo = await userInfoPromise;
-        const clientId = userInfo.value?.client?.id;
-        if (!clientId) return {};
-
+    const nextSessionsPromise = new ClientPromise(async () => {
         const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
         const sessions = await fetcher.FindAllFutureSessionsOf({
-            params: { id: clientId },
+            params: { id: C_MYSELF },
         });
 
         const sorted_dates = sessions.reduce(
@@ -33,16 +31,14 @@
         );
 
         return sorted_dates;
-    }
-
-    const nextSessionsPromise = getNextSessions();
+    }).else({});
 </script>
 
 <h1 class="w-full text-center text-5xl font-bold mt-12 mb-16">
     Upcoming Sessions
 </h1>
 
-{#await nextSessionsPromise then nextSessions}
+{#await nextSessionsPromise.resolver then nextSessions}
     {#each Object.entries(nextSessions) as dateSessions}
         <div class="flex flex-col justify-start items-start w-full mt-8">
             <span class="text-3xl md:text-5xl font-bold md:ml-2"

@@ -25,6 +25,7 @@ import { SessionCompletion } from '@/src/entities/Session.enum';
 import dayjs from 'dayjs';
 import { pad2zeros } from '@/src/utils/format_utils';
 import { repeat_dates_weekly } from '@/src/utils/session_utils';
+import { C_MYSELF } from '@/src/utils/constants';
 
 @Controller(PATH)
 @UseGuards(AuthGuard)
@@ -161,26 +162,27 @@ export class ClientController {
       req,
       res,
       async (data) => {
-        return execute_if_administrator(
+        return execute_if_authorized(
           this.authService,
           req,
           res,
-          async () => {
-            const deposits = await this.depositService.findAllOfClient(
-              data.params.id,
-            );
+          async (authTkn) => {
+            const client_id = C_MYSELF.matches(data.params.id)
+              ? authTkn?.user?.userid
+              : data.params.id;
+
+            if (!client_id) return [];
+
+            const deposits =
+              await this.depositService.findAllOfClient(client_id);
 
             return deposits;
           },
-          async () => {
-            const myClient = await this.clientService.findOneOfTokens(req);
-            if (myClient?.id != data.params.id) return [];
-
-            const deposits = await this.depositService.findAllOfClient(
-              myClient.id,
+          (authTkn) => {
+            return (
+              C_MYSELF.matches(data.params.id) ||
+              data.params.id == authTkn?.user?.userid
             );
-
-            return deposits;
           },
         );
       },
@@ -236,10 +238,15 @@ export class ClientController {
           this.authService,
           req,
           res,
-          async () => {
-            const sessions = await this.sessionService.findAllFutureOfClient(
-              data.params.id,
-            );
+          async (authTkn) => {
+            const client_id = C_MYSELF.matches(data.params.id)
+              ? authTkn?.user?.userid
+              : data.params.id;
+
+            if (!client_id) return [];
+
+            const sessions =
+              await this.sessionService.findAllFutureOfClient(client_id);
 
             // Required since repeat_dates_weekly removes this getter
             const with_students = sessions.map((ss) => ({
@@ -304,12 +311,17 @@ export class ClientController {
         req,
         res,
         async (authTkn) => {
-          const client = await this.clientService.findOne(data.params.id);
+          const client_id = C_MYSELF.matches(data.params.id)
+            ? authTkn?.user?.userid
+            : data.params.id;
+
+          if (!client_id) return null;
+
+          const client = await this.clientService.findOne(client_id);
           if (client == null) return null;
 
-          const all_past_invoices = await this.depositService.findAllOfClient(
-            data.params.id,
-          );
+          const all_past_invoices =
+            await this.depositService.findAllOfClient(client_id);
 
           const last_invoices = all_past_invoices.toSorted(
             (a, b) => a.date.getTime() - b.date.getTime(),
@@ -450,19 +462,24 @@ export class ClientController {
       req,
       res,
       async (data) => {
-        return execute_if_administrator(
+        return execute_if_authorized(
           this.authService,
           req,
           res,
-          async () => {
-            return this.balance_calculation(data.params.id);
+          async (authTkn) => {
+            const client_id = C_MYSELF.matches(data.params.id)
+              ? authTkn?.user?.userid
+              : data.params.id;
+
+            if (!client_id) return 0;
+
+            return this.balance_calculation(client_id);
           },
-          async () => {
-            const myClient = await this.clientService.findOneOfTokens(req);
-
-            if (myClient?.id != data.params.id) return 0;
-
-            return this.balance_calculation(myClient.id);
+          (authTkn) => {
+            return (
+              C_MYSELF.matches(data.params.id) ||
+              data.params.id == authTkn?.user?.userid
+            );
           },
         );
       },

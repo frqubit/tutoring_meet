@@ -36,7 +36,7 @@
         `}
     >
         {#await userInfo}
-            <a href="/" class=" font-semibold">Homepage</a>
+            <a href="/homepage" class=" font-semibold">Homepage</a>
             <a href="/billing" class=" font-semibold"> Billing </a>
             <a href="/upcoming" class=" font-semibold"> Upcoming </a>
             <!-- <a href="/practice" class=" font-semibold"> Practice </a> -->
@@ -50,7 +50,7 @@
                 <a href="/admin/client" class="font-semibold">Clients</a>
                 <a href="/admin/calendar" class="font-semibold">Calendar</a>
             {:else}
-                <a href="/" class=" font-semibold"> Homepage </a>
+                <a href="/homepage" class=" font-semibold"> Homepage </a>
 
                 <a href="/billing" class="font-semibold"> Billing </a>
 
@@ -80,11 +80,7 @@
                     <AdminBe />
                 {/if}
 
-                <a
-                    href={SIGNOUT_URL}
-                    class={`text-blue-700 ${dev ? "md:hidden" : ""}`}
-                    >Sign out</a
-                >
+                <a href={SIGNOUT_URL} class={`text-blue-700`}>Sign out</a>
             {/await}
         </div>
     {/if}

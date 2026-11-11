@@ -1,28 +1,24 @@
 <script lang="ts">
+    import { C_MYSELF } from "$lib/backend/utils/constants";
     import RecentSessions from "$lib/components/client/RecentSessions.svelte";
     import {
         FetcherWithDefaultClientSettings,
         SessionFetcher,
     } from "$lib/fetchers";
+    import { ClientPromise, NotOnClient } from "$lib/utils/promise_utils";
 
     import { localUserInfo } from "$lib/utils/user_utils.svelte";
     const userInfoPromise = localUserInfo();
 
-    async function get_next_session() {
-        const userInfo = await userInfoPromise;
-        const clientId = userInfo.value?.client?.id;
-        if (!clientId) return null;
-
+    const nextSessionPromise = new ClientPromise(async () => {
         const fetcher = FetcherWithDefaultClientSettings(SessionFetcher);
 
         const session = await fetcher.FindNextOfClient({
-            params: { id: clientId },
+            params: { id: C_MYSELF },
         });
 
         return session;
-    }
-
-    const nextSessionPromise = get_next_session();
+    });
 </script>
 
 <div class="flex flex-row justify-start items-start w-full">
@@ -50,10 +46,14 @@
                 mt-2 lg:mt-0
             "
         >
-            {#await nextSessionPromise}
+            {#await nextSessionPromise.resolver}
                 ...
             {:then nextSession}
-                {nextSession?.date.toLocaleString()}
+                {#if nextSession instanceof NotOnClient}
+                    ...
+                {:else}
+                    {nextSession?.date.toLocaleString()}
+                {/if}
             {/await}
         </span>
 
@@ -67,31 +67,40 @@
             "
         >
             <span class="font-light">
-                {#await nextSessionPromise}
+                {#await nextSessionPromise.resolver}
                     ...
                 {:then nextSession}
-                    {nextSession?.minutes} minutes
+                    {#if nextSession instanceof NotOnClient}
+                        ...
+                    {:else}
+                        {nextSession?.minutes} minutes
+                    {/if}
                 {/await}
             </span>
 
             <span class="font-light">
-                {#await nextSessionPromise}
+                {#await nextSessionPromise.resolver}
                     ...
                 {:then nextSession}
                     {#await userInfoPromise}
                         ...
                     {:then userInfo}
-                        {nextSession?.students.find(
-                            (s) => s.client.id == userInfo.value?.client?.id,
-                        )?.name || "No Student Of Mine"}
+                        {#if nextSession instanceof NotOnClient}
+                            ...
+                        {:else}
+                            {nextSession?.students.find(
+                                (s) =>
+                                    s.client.id == userInfo.value?.client?.id,
+                            )?.name || "No Student Of Mine"}
+                        {/if}
                     {/await}
                 {/await}
             </span>
         </div>
         <!-- </div> -->
 
-        {#await nextSessionPromise then nextSession}
-            {#if nextSession != null}
+        {#await nextSessionPromise.resolver then nextSession}
+            {#if nextSession != null && !(nextSession instanceof NotOnClient)}
                 <a
                     href={`/session/${nextSession.id}`}
                     class="mt-auto font-bold text-xl text-blue-700"

@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { UserInfoCls } from "$lib/utils/user_utils.svelte";
+    import { localUserInfo, UserInfoCls } from "$lib/utils/user_utils.svelte";
     import {
         FetcherWithDefaultClientSettings,
         ClientFetcher,
     } from "$lib/fetchers";
     import { BACKEND_DOMAIN } from "$lib";
+    import { onMount } from "svelte";
 
     async function get_clients() {
         const fetcher = FetcherWithDefaultClientSettings(ClientFetcher);
@@ -15,6 +16,14 @@
 
     let devid = $state(0);
     let clients = $state(get_clients());
+
+    onMount(async () => {
+        const userinfo = await localUserInfo();
+
+        if (userinfo.value?.client?.id) {
+            devid = userinfo.value.client.id;
+        }
+    });
 
     async function devlogin() {
         UserInfoCls.wipe();

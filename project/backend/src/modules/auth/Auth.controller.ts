@@ -70,7 +70,7 @@ export class AuthController {
     const isadminpage =
       authtoken instanceof AuthProblem ? false : authtoken.user == undefined;
 
-    response.redirect(`${WEBSITE_URI}${isadminpage ? '/admin' : ''}`);
+    response.redirect(`${WEBSITE_URI}${isadminpage ? '/admin' : '/homepage'}`);
   }
 
   @Get()
@@ -130,7 +130,7 @@ export class AuthController {
         }
       }
 
-      response.redirect(`${WEBSITE_URI}${state ? atob(state) : ''}`);
+      response.redirect(`${WEBSITE_URI}${state ? atob(state) : '/homepage'}`);
     } else {
       throw new HttpException(
         JSON.stringify(tokens),
@@ -203,7 +203,7 @@ export class AuthController {
         });
       }
 
-      response.redirect(`${WEBSITE_URI}${state ? atob(state) : ''}`);
+      response.redirect(`${WEBSITE_URI}${state ? atob(state) : '/homepage'}`);
     } else {
       throw new HttpException(
         JSON.stringify(tokens),
