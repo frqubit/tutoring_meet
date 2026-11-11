@@ -4,7 +4,7 @@
     let { children, data } = $props();
 </script>
 
-<div class="w-full min-h-screen p-6">
+<div class="w-full min-h-screen p-6 bg-background">
     <Header signed_in={data.signed_in} />
     {@render children()}
 </div>
