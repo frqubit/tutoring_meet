@@ -6,6 +6,7 @@
   },
   "scripts": {
     "reload_live_db": "pnpm -F db reload_live",
-    "dev": "concurrently 'pnpm -F backend dev' 'pnpm -F website dev'"
+    "dev": "concurrently 'pnpm -F backend dev' 'pnpm -F website dev'",
+    "e2e:backend": "pnpm -F backend e2e"
   }
 }

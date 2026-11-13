@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthService, Tokens } from './Auth.service';
 import type { Request, Response } from 'express';
-import { DEV, WEBSITE_URI } from '@/src/config';
+import { DEV, E2E, WEBSITE_URI } from '@/src/config';
 import dayjs from 'dayjs';
 import Handlers from './Auth.handlers';
 import { Decorate } from '@/src/utils/controller_utils';
@@ -33,6 +33,32 @@ export class AuthController {
   @Get('version')
   getVersion() {
     return { version: 3 };
+  }
+
+  @Get('e2e/authtkn')
+  async e2eAuthTkn(
+    @Query('clientid') clientid: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    if (!E2E) {
+      this.logger.error('Only administrators allowed');
+      response.status(404).send('Not available outside of E2E');
+      return;
+    }
+
+    const authtoken =
+      await this.authService.devCreateAuthTokenForClient(+clientid);
+
+    if (!(authtoken instanceof AuthProblem)) {
+      const serialized = AnyAuthTokenVersion.ser(authtoken);
+      if (!(serialized instanceof SerFailure)) {
+        response.status(200).send(serialized);
+        return;
+      }
+    }
+
+    response.status(500).send('');
   }
 
   // Development only

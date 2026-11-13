@@ -10,8 +10,13 @@ import { FetcherData, HandlerInfo, Params, ParamsT } from './handler_utils';
 import TestAgent from 'supertest/lib/agent';
 import { enforce, OptionalIfUndefined } from './type_utils';
 import request from 'supertest';
-import { Serde, SerdeT, SerFailure } from './serde_utils';
+import { DeFailure, Serde, SerdeT, SerFailure } from './serde_utils';
 import { fail } from 'node:assert';
+import {
+  LatestVersion as LatestAuthTokenVersion,
+  LatestFormat as LatestAuthTokenFormat,
+  AnyVersion as AnyAuthTokenVersion,
+} from '@/src/webdata/auth_token';
 import {
   PATH as CLIENT_PATH,
   Handlers as ClientHandlers,
@@ -37,6 +42,11 @@ import {
 import { Error as ServerError } from '../modules/Error';
 import { WebDataService } from '../modules/webdata/WebData.service';
 import { MockWebDataService } from '../modules/webdata/WebData.mock';
+import cookieParser from 'cookie-parser';
+
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 const exec_async = promisify(exec);
 
@@ -47,7 +57,7 @@ export function e2e_init() {}
 
 async function blank_sql_exists(repo_root: string): Promise<boolean> {
   try {
-    await lstat(`${repo_root}/blank.sql`);
+    await lstat(`${repo_root}/project/db/blank.sql`);
     return true;
   } catch {
     return false;
@@ -56,7 +66,7 @@ async function blank_sql_exists(repo_root: string): Promise<boolean> {
 
 export async function create_temporary_blank_sqlite_db_path(): Promise<string> {
   const repository_root = await exec_async(
-    'batl which frqubit.tutoring.database',
+    'git rev-parse --show-toplevel',
   ).then((res) => res.stdout.replace('\n', ''));
 
   if (!(await blank_sql_exists(repository_root))) {
@@ -67,7 +77,7 @@ export async function create_temporary_blank_sqlite_db_path(): Promise<string> {
 
   // await exec_async(`cp -f ${repository_root}/blank.sql ${temporary_path}`);
 
-  await copyFile(`${repository_root}/blank.sql`, temporary_path);
+  await copyFile(`${repository_root}/project/db/blank.sql`, temporary_path);
 
   return temporary_path;
 }
@@ -87,6 +97,10 @@ export async function create_testNestApplication(): Promise<
     rawBody: true,
   });
   app.useBodyParser('text');
+  app.use(cookieParser());
+
+  dayjs.extend(utc);
+  dayjs.extend(timezone);
 
   return app;
 }
@@ -118,6 +132,7 @@ export function TesterFnFromGenerics<
   handler: HandlerInfo<I, O, P>,
   base_uri: string,
   app: INestApplication<App>,
+  auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   cb: OnUseTesterCb,
 ): TesterFnFromHandlerGenerics<I, O, P> {
   if (
@@ -130,17 +145,34 @@ export function TesterFnFromGenerics<
     return async (data, jester, extras?) => {
       cb(`${base_uri}/${handler.dev_key}`);
 
+      const auth_token_val = auth_token();
+
+      const tauth = auth_token_val
+        ? AnyAuthTokenVersion.ser(auth_token_val)
+        : null;
+      if (tauth instanceof SerFailure) {
+        throw new Error(
+          'Nonsensical authtoken serialization failure, check types',
+        );
+      }
+
       // @ts-expect-error SHAPE UP
       const data_params: P extends Params ? ParamsT<P> : undefined =
         'params' in data ? data.params : undefined;
 
       let output: ReturnType<typeof jester> | NoValueCode = new NoValueCode();
 
-      await correct_method_function(
+      let correct_method = correct_method_function(
         ensured_method,
         request(app.getHttpServer()),
         `/${base_uri}/${handler.parameterized_path(data_params)}`,
-      )
+      );
+
+      if (tauth) {
+        correct_method = correct_method.set('Cookie', `TAUTH=${tauth}`);
+      }
+
+      await correct_method
         .expect((res) => {
           if (extras?.enforce?.status_code !== undefined) {
             if (res.status !== extras.enforce.status_code)
@@ -178,6 +210,17 @@ export function TesterFnFromGenerics<
     return async (data, jester, extras?) => {
       cb(`${base_uri}/${handler.dev_key}`);
 
+      const auth_token_val = auth_token();
+
+      const tauth = auth_token_val
+        ? AnyAuthTokenVersion.ser(auth_token_val)
+        : null;
+      if (tauth instanceof SerFailure) {
+        throw new Error(
+          'Nonsensical authtoken serialization failure, check types',
+        );
+      }
+
       if (!('body' in data)) return fail('is post method but no body?');
       // @ts-expect-error SHAPE UP
       const data_params: P extends Params ? ParamsT<P> : undefined =
@@ -188,8 +231,15 @@ export function TesterFnFromGenerics<
 
       let output: ReturnType<typeof jester> | NoValueCode = new NoValueCode();
 
-      await request(app.getHttpServer())
-        .post(`/${base_uri}/${handler.parameterized_path(data_params)}`)
+      let correct_method = request(app.getHttpServer()).post(
+        `/${base_uri}/${handler.parameterized_path(data_params)}`,
+      );
+
+      if (tauth) {
+        correct_method = correct_method.set('Cookie', `TAUTH=${tauth}`);
+      }
+
+      await correct_method
         .set('Content-Type', 'text/plain')
         .send(resS)
         .expect((res) => {
@@ -230,7 +280,13 @@ export function TesterFnFromGenerics<
 
 export function TesterFn<
   H extends HandlerInfo<Serde<any> | undefined, Serde<any>, Params | undefined>,
->(handler: H, base_uri: string, app: INestApplication<App>, cb: OnUseTesterCb) {
+>(
+  handler: H,
+  base_uri: string,
+  app: INestApplication<App>,
+  auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
+  cb: OnUseTesterCb,
+) {
   return TesterFnFromGenerics(
     handler._input_type,
     handler.output,
@@ -238,6 +294,7 @@ export function TesterFn<
     handler,
     base_uri,
     app,
+    auth_token,
     cb,
   );
 }
@@ -249,13 +306,14 @@ export function TesterGenerator<
   handler_record: H,
 ): (
   app: INestApplication<App>,
+  auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   on_use: OnUseTesterCb,
 ) => HandlerRecordToTesterFns<H> {
-  return (app, on_use) => {
+  return (app, auth_token, on_use) => {
     return Object.fromEntries(
       Object.entries(handler_record).map((kv) => {
         const [k, v] = kv;
-        return [k, TesterFn(v, path, app, on_use)];
+        return [k, TesterFn(v, path, app, auth_token, on_use)];
       }),
     ) as unknown as HandlerRecordToTesterFns<H>;
   };
@@ -346,19 +404,31 @@ export const Handlers = _HandlerCodes;
 
 function get_called_testers(
   app: INestApplication<App>,
+  auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   cb: OnUseTesterCb,
 ): CalledTesterMap {
   return Object.fromEntries(
-    Object.entries(TESTERS).map(([k, v]) => [k, v(app, cb)]),
+    Object.entries(TESTERS).map(([k, v]) => [k, v(app, auth_token, cb)]),
   ) as unknown as CalledTesterMap;
 }
 
-type E2ETestFn = (testers: CalledTesterMap) => Promise<void>;
+type E2ETestFn = (
+  testers: CalledTesterMap,
+  extras: E2ETestFnExtras,
+) => Promise<void>;
+interface E2ETestFnExtras {
+  Utils: {
+    BecomeClient: (clientid: number) => Promise<void>;
+    BecomeAdministrator: () => Promise<void>;
+  };
+}
 
 export class E2ETest {
   private readonly _dev_name: string;
   private readonly _test_fn: E2ETestFn;
   private readonly _handlers_assigned: string[];
+
+  private auth_token: SerdeT<typeof AnyAuthTokenVersion> | null;
 
   constructor(
     dev_name: string,
@@ -368,10 +438,35 @@ export class E2ETest {
     this._dev_name = dev_name;
     this._test_fn = test_fn;
     this._handlers_assigned = handlers_assigned;
+
+    this.auth_token = null;
   }
 
   public mark_off_contained_handlers(checklist: string[]): string[] {
     return checklist.filter((v) => this._handlers_assigned.indexOf(v) == -1);
+  }
+
+  private async get_authtkn(app: INestApplication<App>, clientid: number) {
+    await request(app.getHttpServer())
+      .get(`/auth/e2e/authtkn?clientid=${clientid}`)
+      .then((res) => {
+        const body = res.text;
+
+        const deserialized = AnyAuthTokenVersion.de(body);
+        if (deserialized instanceof DeFailure)
+          throw new Error(`Invalid received auth token`);
+
+        this.auth_token = deserialized;
+      });
+  }
+
+  private gen_extras(app: INestApplication<App>): E2ETestFnExtras {
+    return {
+      Utils: {
+        BecomeClient: (clientid) => this.get_authtkn(app, clientid),
+        BecomeAdministrator: () => this.get_authtkn(app, -1),
+      },
+    };
   }
 
   public async execute() {
@@ -381,20 +476,26 @@ export class E2ETest {
     // ensure cloned copy
     let handlers_left = this._handlers_assigned.map((v) => v);
 
-    const called_testers = get_called_testers(app, (handler_code) => {
-      if (this._handlers_assigned.indexOf(handler_code) == -1) {
-        throw new Error(
-          `Attempted to use handler ${handler_code} which is not assigned to test ${this._dev_name}`,
-        );
-      }
+    const called_testers = get_called_testers(
+      app,
+      () => {
+        return this.auth_token;
+      },
+      (handler_code) => {
+        if (this._handlers_assigned.indexOf(handler_code) == -1) {
+          throw new Error(
+            `Attempted to use handler ${handler_code} which is not assigned to test ${this._dev_name}`,
+          );
+        }
 
-      if (handlers_left.indexOf(handler_code) != -1) {
-        handlers_left = handlers_left.filter((v) => v != handler_code);
-      }
-    });
+        if (handlers_left.indexOf(handler_code) != -1) {
+          handlers_left = handlers_left.filter((v) => v != handler_code);
+        }
+      },
+    );
 
     vitest_test(this._dev_name, async () => {
-      await this._test_fn(called_testers);
+      await this._test_fn(called_testers, this.gen_extras(app));
 
       vitest_expect(
         handlers_left,

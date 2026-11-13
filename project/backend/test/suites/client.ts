@@ -5,10 +5,12 @@ import {
 } from '../../src/utils/e2e_utils';
 import { expect } from 'vitest';
 
-export const TESTS = gen_e2e_tests('SessionController', (gen) => {
+export const TESTS = gen_e2e_tests('ClientController', (gen) => {
   gen.test(
     'FindAll/Create/FindOne',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       await Testers.Client.FindAll({}, (res) => {
         expect(res).toHaveLength(0);
       });
@@ -38,7 +40,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Mass Create/ToggleActive/Remove',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const new_clients: {
         name: string;
         active: boolean;
@@ -107,7 +111,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Rename',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
@@ -164,7 +170,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'MergeInto',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client_a = await Testers.Client.Create(
         {
           body: {

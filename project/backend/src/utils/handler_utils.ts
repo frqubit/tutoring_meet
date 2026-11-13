@@ -140,7 +140,10 @@ export class HandlerInfo<
       if (serresp instanceof SerFailure)
         return res.status(500).send('Serialization failed: ' + serresp.reason);
 
-      return res.status(200).send(Buffer.from(serresp));
+      return res
+        .status(200)
+        .setHeader('Content-Type', 'text/plain')
+        .send(Buffer.from(serresp));
     } else {
       const rawBodyString = req.rawBody!.toString('utf8');
       const result = await f({
@@ -164,7 +167,10 @@ export class HandlerInfo<
       if (serresp instanceof SerFailure)
         return res.status(500).send('Serialization failed: ' + serresp.reason);
 
-      return res.status(200).send(Buffer.from(serresp));
+      return res
+        .status(200)
+        .setHeader('Content-Type', 'text/plain')
+        .send(Buffer.from(serresp));
     }
   }
 

@@ -9,7 +9,9 @@ import { expect } from 'vitest';
 export const TESTS = gen_e2e_tests('DepositController', (gen) => {
   gen.test(
     'FindAll/Create/FindOne/Remove',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       await Testers.Deposit.FindAll({}, (val) => {
         expect(val).toHaveLength(0);
       });
@@ -107,7 +109,9 @@ export const TESTS = gen_e2e_tests('DepositController', (gen) => {
 
   gen.test(
     'GetBalanceOf',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {

@@ -11,7 +11,9 @@ import { SessionCompletion } from '@/src/entities/Session';
 export const TESTS = gen_e2e_tests('SessionController', (gen) => {
   gen.test(
     'FindAll/Create/FindOne',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       await Testers.Session.FindAll({}, (val) => {
         expect(val).toHaveLength(0);
       });
@@ -94,7 +96,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Mass Remove',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
@@ -166,7 +170,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Submit',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
@@ -376,7 +382,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'FindAllCompleted/FutureOf',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const c1 = await Testers.Client.Create(
         {
           body: {
@@ -623,7 +631,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Reschedule/Filter etc',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
@@ -924,7 +934,9 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
 
   gen.test(
     'Modify',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {

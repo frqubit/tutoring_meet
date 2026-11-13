@@ -1,4 +1,3 @@
-import Test from 'supertest/lib/test';
 import {
   gen_e2e_tests,
   Handlers,
@@ -9,7 +8,9 @@ import { expect } from 'vitest';
 export const TESTS = gen_e2e_tests('StudentController', (gen) => {
   gen.test(
     'FindAll/Create/FindOne/Remove',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       await Testers.Student.FindAll({}, (val) => {
         expect(val).toHaveLength(0);
       });
@@ -106,7 +107,9 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
 
   gen.test(
     'Mass Create/ToggleActive/Remove',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: { name: 'John Doe', active: true },
@@ -185,7 +188,9 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
 
   gen.test(
     'Rename',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
@@ -284,7 +289,9 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
 
   gen.test(
     'StudentNote',
-    async (Testers) => {
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
       const client = await Testers.Client.Create(
         {
           body: {
