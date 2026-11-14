@@ -34,6 +34,8 @@ import {
   describe as vitest_describe,
   test as vitest_test,
   expect as vitest_expect,
+  beforeEach as vitest_beforeEach,
+  afterEach as vitest_afterEach,
 } from 'vitest';
 import { Error as ServerError } from '../modules/Error';
 import { WebDataService } from '../modules/webdata/WebData.service';
@@ -127,7 +129,7 @@ export function TesterFnFromGenerics<
   Pval: P,
   handler: HandlerInfo<I, O, P>,
   base_uri: string,
-  app: INestApplication<App>,
+  get_app: () => INestApplication<App>,
   auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   cb: OnUseTesterCb,
 ): TesterFnFromHandlerGenerics<I, O, P> {
@@ -139,6 +141,8 @@ export function TesterFnFromGenerics<
     const ensured_method = handler.call_variant;
 
     return async (data, jester, extras?) => {
+      const app = get_app();
+
       cb(`${base_uri}/${handler.dev_key}`);
 
       const auth_token_val = auth_token();
@@ -204,6 +208,8 @@ export function TesterFnFromGenerics<
     const ensured_cv = handler.call_variant;
 
     return async (data, jester, extras?) => {
+      const app = get_app();
+
       cb(`${base_uri}/${handler.dev_key}`);
 
       const auth_token_val = auth_token();
@@ -279,7 +285,7 @@ export function TesterFn<
 >(
   handler: H,
   base_uri: string,
-  app: INestApplication<App>,
+  get_app: () => INestApplication<App>,
   auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   cb: OnUseTesterCb,
 ) {
@@ -289,7 +295,7 @@ export function TesterFn<
     handler.params,
     handler,
     base_uri,
-    app,
+    get_app,
     auth_token,
     cb,
   );
@@ -301,15 +307,15 @@ export function TesterGenerator<
   path: string,
   handler_record: H,
 ): (
-  app: INestApplication<App>,
+  get_app: () => INestApplication<App>,
   auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   on_use: OnUseTesterCb,
 ) => HandlerRecordToTesterFns<H> {
-  return (app, auth_token, on_use) => {
+  return (get_app, auth_token, on_use) => {
     return Object.fromEntries(
       Object.entries(handler_record).map((kv) => {
         const [k, v] = kv;
-        return [k, TesterFn(v, path, app, auth_token, on_use)];
+        return [k, TesterFn(v, path, get_app, auth_token, on_use)];
       }),
     ) as unknown as HandlerRecordToTesterFns<H>;
   };
@@ -399,12 +405,12 @@ const _HandlerCodes = ((): HandlerCodes => {
 export const Handlers = _HandlerCodes;
 
 function get_called_testers(
-  app: INestApplication<App>,
+  get_app: () => INestApplication<App>,
   auth_token: () => SerdeT<typeof AnyAuthTokenVersion> | null,
   cb: OnUseTesterCb,
 ): CalledTesterMap {
   return Object.fromEntries(
-    Object.entries(TESTERS).map(([k, v]) => [k, v(app, auth_token, cb)]),
+    Object.entries(TESTERS).map(([k, v]) => [k, v(get_app, auth_token, cb)]),
   ) as unknown as CalledTesterMap;
 }
 
@@ -465,15 +471,12 @@ export class E2ETest {
     };
   }
 
-  public async execute() {
-    const app = await create_testNestApplication();
-    await app.init();
-
+  public execute(get_app: () => INestApplication<App>) {
     // ensure cloned copy
     let handlers_left = this._handlers_assigned.map((v) => v);
 
     const called_testers = get_called_testers(
-      app,
+      get_app,
       () => {
         return this.auth_token;
       },
@@ -491,7 +494,7 @@ export class E2ETest {
     );
 
     vitest_test(this._dev_name, async () => {
-      await this._test_fn(called_testers, this.gen_extras(app));
+      await this._test_fn(called_testers, this.gen_extras(get_app()));
 
       vitest_expect(
         handlers_left,
@@ -525,9 +528,21 @@ export class _E2ETestGenerator {
   public execute() {
     if (!this.finalized) throw new Error('Must be finalized to execute');
 
-    vitest_describe(this.dev_name, async () => {
+    vitest_describe(this.dev_name, () => {
+      let app: INestApplication<App>;
+
+      vitest_beforeEach(async () => {
+        app = await create_testNestApplication();
+        app.enableShutdownHooks();
+        await app.init();
+      });
+
+      vitest_afterEach(async () => {
+        await app.close();
+      });
+
       for (const e2e_test of this.tests) {
-        await e2e_test.execute();
+        e2e_test.execute(() => app);
       }
     });
   }

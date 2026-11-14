@@ -436,7 +436,10 @@ export class ClientController {
           };
         },
         (authTkn) => {
-          return authTkn?.user?.userid == data.params.id;
+          return (
+            C_MYSELF.matches(data.params.id) ||
+            authTkn?.user?.userid == data.params.id
+          );
         },
       );
     });

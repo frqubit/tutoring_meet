@@ -110,7 +110,14 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
     async (Testers, { Utils }) => {
       await Utils.BecomeAdministrator();
 
-      const client = await Testers.Client.Create(
+      const client1 = await Testers.Client.Create(
+        {
+          body: { name: 'John Doe', active: true },
+        },
+        (val) => val,
+      );
+
+      const client2 = await Testers.Client.Create(
         {
           body: { name: 'John Doe', active: true },
         },
@@ -118,13 +125,42 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
       );
 
       const new_students = Array.from({ length: 100 }).map(() => ({
-        client_id: client.id,
+        client_id: Math.random() > 0.5 ? client1.id : client2.id,
         name: Math.random().toString(36).substring(2, 13),
         active: Math.random() > 0.5,
       }));
+
+      const _ex_createdstudent_fn = async () => {
+        return await Testers.Student.Create(
+          {
+            body: new_students[0],
+          },
+          (val) => {
+            if ('error' in val) throw_server_error(val);
+            return val;
+          },
+        );
+      };
+
+      let students1: Awaited<ReturnType<typeof _ex_createdstudent_fn>>[] = [];
+      let students2: Awaited<ReturnType<typeof _ex_createdstudent_fn>>[] = [];
+
       for (const student of new_students) {
         // This was tested in the previous suite
-        await Testers.Student.Create({ body: student }, (_res) => {});
+        const student_obj = await Testers.Student.Create(
+          { body: student },
+          (res) => {
+            if ('error' in res) throw_server_error(res);
+
+            return res;
+          },
+        );
+
+        if (student_obj.client.id == client1.id) {
+          students1.push(student_obj);
+        } else {
+          students2.push(student_obj);
+        }
       }
 
       const all_fetched_students = await Testers.Student.FindAll({}, (res) => {
@@ -149,14 +185,12 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
 
       const random_ids: number[] = Array.from({ length: 10 }).reduce(
         (agg: number[], _next: undefined) => {
-          let random_number = Math.floor(
-            Math.random() * all_fetched_students.length,
-          );
+          let random_number =
+            Math.floor(Math.random() * (all_fetched_students.length - 1)) + 1;
 
           while (agg.indexOf(random_number) != -1) {
-            random_number = Math.floor(
-              Math.random() * all_fetched_students.length,
-            );
+            random_number =
+              Math.floor(Math.random() * (all_fetched_students.length - 1)) + 1;
           }
 
           agg.push(random_number);
@@ -170,11 +204,45 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
         await Testers.Student.FindOne({ params: { id } }, (_res) => {}, {
           enforce: { status_code: 404 },
         });
+
+        students1 = students1.filter((v) => v.id !== id);
+        students2 = students2.filter((v) => v.id !== id);
       }
 
-      // await Testers.Student.FindAll({}, (val) => {
-      //   expect(val).toHaveLength(new_students.length - random_ids.length);
-      // });
+      await Testers.Student.FindAll({}, (val) => {
+        if (!(val.length == new_students.length - random_ids.length)) {
+          console.log(`Random IDs: [${random_ids.join(', ')}]`);
+        }
+        expect(val).toHaveLength(new_students.length - random_ids.length);
+      });
+
+      await Testers.Student.FindAllOfClient(
+        {
+          params: { id: client1.id },
+        },
+        (val) => {
+          expect(val).toHaveLength(students1.length);
+          for (const student of val) {
+            expect(students1.findIndex((s) => s.id == student.id)).not.toEqual(
+              -1,
+            );
+          }
+        },
+      );
+
+      await Testers.Student.FindAllOfClient(
+        {
+          params: { id: client2.id },
+        },
+        (val) => {
+          expect(val).toHaveLength(students2.length);
+          for (const student of val) {
+            expect(students2.findIndex((s) => s.id == student.id)).not.toEqual(
+              -1,
+            );
+          }
+        },
+      );
     },
     [
       Handlers.Client.Create,
@@ -183,6 +251,7 @@ export const TESTS = gen_e2e_tests('StudentController', (gen) => {
       Handlers.Student.FindOne,
       Handlers.Student.Remove,
       Handlers.Student.ToggleActive,
+      Handlers.Student.FindAllOfClient,
     ],
   );
 

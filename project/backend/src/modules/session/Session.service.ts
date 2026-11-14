@@ -606,7 +606,6 @@ export class SessionService {
       .readSerdeFromFile(AnySessionNoteVersion, webdata_id)
       .then((v) => {
         if ('error' in v) {
-          this.logger.error(`Error saving session note: ${v.message}`);
           return { sessions: [] };
         }
         return v;

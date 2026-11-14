@@ -7,6 +7,7 @@ import {
 } from '../../src/utils/e2e_utils';
 import { expect } from 'vitest';
 import { SessionCompletion } from '@/src/entities/Session';
+import { C_MYSELF } from '@/src/utils/constants';
 
 export const TESTS = gen_e2e_tests('SessionController', (gen) => {
   gen.test(
@@ -45,7 +46,7 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
         },
       );
 
-      const session_date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const session_date = new Date(Date.now() + MS_IN.week);
 
       const session = await Testers.Session.Create(
         {
@@ -1242,6 +1243,297 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
       Handlers.Session.Reschedule,
       Handlers.Session.FindAllByFilter,
       Handlers.Session.FindOne,
+    ],
+  );
+
+  gen.test(
+    'Client Most Recent',
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
+      const client1 = await Testers.Client.Create(
+        {
+          body: {
+            name: 'John Doe',
+            active: true,
+          },
+        },
+        (v) => v,
+      );
+
+      const client2 = await Testers.Client.Create(
+        {
+          body: {
+            name: 'Jane Doe',
+            active: true,
+          },
+        },
+        (v) => v,
+      );
+
+      const student1 = await Testers.Student.Create(
+        {
+          body: {
+            name: 'John Doe II',
+            active: true,
+            client_id: client1.id,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      const student2 = await Testers.Student.Create(
+        {
+          body: {
+            name: 'Jane Doe II',
+            active: true,
+            client_id: client2.id,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      // No sessions made yet
+      await Testers.Session.FindNextOfClient(
+        {
+          params: { id: client1.id },
+        },
+        (v) => {
+          expect(v).toBe(null);
+        },
+      );
+
+      const session1_1 = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student1.id,
+            date: new Date(Date.now() + MS_IN.day * 2),
+            minutes: 60,
+            ends: undefined,
+            every: 0,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      const session1_2 = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student1.id,
+            date: new Date(Date.now() + MS_IN.day * 6),
+            minutes: 60,
+            ends: undefined,
+            every: 0,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      await Testers.Session.FindNextOfClient(
+        {
+          params: { id: client1.id },
+        },
+        (v) => {
+          expect(v).not.toBe(null);
+          expect(v?.id).toEqual(session1_1.id);
+        },
+      );
+
+      await Testers.Session.FindNextOfClient(
+        {
+          params: { id: client2.id },
+        },
+        (v) => {
+          expect(v).toBe(null);
+        },
+      );
+
+      const session2_1 = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student2.id,
+            date: new Date(Date.now() + MS_IN.day * 12),
+            minutes: 60,
+            ends: undefined,
+            every: 0,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      const session2_2 = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student2.id,
+            date: new Date(Date.now() - MS_IN.day * 1),
+            minutes: 60,
+            ends: undefined,
+            every: 0,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      await Utils.BecomeClient(client2.id);
+
+      await Testers.Session.FindNextOfClient(
+        {
+          params: { id: C_MYSELF }, // client2, see BecomeClient above
+        },
+        (v) => {
+          expect(v).not.toBe(null);
+          expect(v?.id).toEqual(session2_1.id);
+        },
+      );
+
+      await Utils.BecomeAdministrator(); // To create the other session
+
+      const session2_3 = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student2.id,
+            date: new Date(Date.now() - MS_IN.day * 3),
+            minutes: 60,
+            ends: undefined,
+            every: 1,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      await Testers.Session.FindNextOfClient(
+        {
+          params: { id: client2.id }, // client2, see BecomeClient above
+        },
+        (v) => {
+          expect(v).not.toBe(null);
+          // It'll be a different ID
+          expect(v?.date.getTime()).toEqual(
+            session2_3.date.getTime() + MS_IN.week,
+          );
+        },
+      );
+    },
+    [
+      Handlers.Client.Create,
+      Handlers.Student.Create,
+      Handlers.Session.Create,
+      Handlers.Session.FindNextOfClient,
+    ],
+  );
+
+  gen.test(
+    'Get/Set Session Notes',
+    async (Testers, { Utils }) => {
+      await Utils.BecomeAdministrator();
+
+      const client = await Testers.Client.Create(
+        {
+          body: {
+            name: 'John Doe',
+            active: true,
+          },
+        },
+        (v) => v,
+      );
+
+      const student = await Testers.Student.Create(
+        {
+          body: {
+            client_id: client.id,
+            name: 'John Doe II',
+            active: true,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      const session = await Testers.Session.Create(
+        {
+          body: {
+            student_id: student.id,
+            date: new Date(Date.now() + MS_IN.day * 12),
+            minutes: 60,
+            ends: undefined,
+            every: 0,
+          },
+        },
+        (v) => {
+          if ('error' in v) throw_server_error(v);
+
+          return v;
+        },
+      );
+
+      const session_note = {
+        subject: 'Math',
+        tutor_plan: [] as string[],
+        event_summary: [] as string[],
+      };
+
+      await Testers.Session.AddNoteToSession(
+        {
+          params: { sessionId: session.id, studentId: student.id },
+          body: session_note,
+        },
+        (v) => {
+          if (v !== null) throw_server_error(v);
+        },
+      );
+
+      await Testers.Session.GetNoteForSession(
+        {
+          params: { sessionId: session.id, studentId: student.id },
+        },
+        (v) => {
+          if (v === null) throw new Error('Note is null when just set');
+
+          expect(v).toEqual({
+            ...session_note,
+            session_date: session.date,
+            session_id: session.id,
+          });
+        },
+      );
+    },
+    [
+      Handlers.Client.Create,
+      Handlers.Student.Create,
+      Handlers.Session.Create,
+      Handlers.Session.AddNoteToSession,
+      Handlers.Session.GetNoteForSession,
     ],
   );
 });
