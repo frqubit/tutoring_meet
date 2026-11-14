@@ -72,7 +72,7 @@ export class AuthController {
     if (
       !DEV &&
       (oldauthtoken instanceof AuthProblem ||
-        !oldauthtoken.groups.administrator)
+        !(oldauthtoken.groups.administrator || oldauthtoken.groups.masquerader))
     ) {
       // Only administrators allowed
       this.logger.error('Only administrators allowed');

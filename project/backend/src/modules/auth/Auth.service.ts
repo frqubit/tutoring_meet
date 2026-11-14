@@ -114,6 +114,7 @@ export class AuthService {
       : null;
 
     return {
+      _version: 4,
       username: username || '',
       created: new Date(),
       expires,
@@ -124,6 +125,7 @@ export class AuthService {
           }
         : null,
       is_administrator: authTkn.groups.administrator,
+      is_masquerader: authTkn.groups.masquerader,
     };
   }
 
@@ -152,7 +154,8 @@ export class AuthService {
       user: null,
       created: new Date(),
       groups: {
-        administrator: true,
+        administrator: false,
+        masquerader: true,
       },
       expires: new Date(Date.now() + 1000 * 3600 * 1000),
       _check: '',
@@ -211,9 +214,45 @@ export class AuthService {
         : null,
       groups: {
         administrator: id['cognito:groups']?.includes('administrator') || false,
+        masquerader: false,
       },
       created: new Date(),
       expires: new Date(id.exp * 1000),
+      _check: '',
+    };
+
+    const serialized = LatestAuthTokenVersion.ser(token);
+    if (serialized instanceof SerFailure) {
+      this.logger.log("Somehow didn't serialize");
+      return AuthProblem.cannot_auth_token();
+    }
+
+    const hash = crypto.hash(
+      'sha256',
+      `${serialized}${process.env.COGNITO_CLIENT_SECRET}`,
+      'hex',
+    );
+
+    token._check = hash;
+
+    return token;
+  }
+
+  updateAuthToken(
+    tkn: SerdeT<typeof AnyAuthTokenVersion>,
+  ): LatestAuthTokenFormat | AuthProblem {
+    const token: LatestAuthTokenFormat = {
+      user: tkn.user,
+      groups: {
+        administrator: tkn.groups.administrator,
+        masquerader:
+          // Added in V3
+          'masquerader' in tkn.groups ? tkn.groups.masquerader : true,
+      },
+      created:
+        // Added in V2
+        'created' in tkn ? tkn.created : new Date(),
+      expires: tkn.expires,
       _check: '',
     };
 
@@ -243,10 +282,11 @@ export class AuthService {
       // The cookie exists
       const deized = AnyAuthTokenVersion.de(authtoken);
       if (!(deized instanceof DeFailure) && 'created' in deized) {
-        const latest_token = deized;
+        const latest_token = this.updateAuthToken(deized);
 
         // The token deserialized
         if (
+          !(latest_token instanceof AuthProblem) &&
           this.verifyAuthToken(latest_token) &&
           deized.expires >= new Date()
         ) {

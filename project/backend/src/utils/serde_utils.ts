@@ -314,6 +314,61 @@ function gen_builtin_serde_type() {
         },
       );
     })(),
+    constant: <V extends number | string | boolean>(constant_val: V) => {
+      return gen_serde<V>(
+        (v) => {
+          if (v !== constant_val) {
+            return new SerFailure('is not expected constant value');
+          }
+
+          switch (typeof constant_val) {
+            case 'string':
+              return `%Cs!${constant_val}`;
+            case 'number':
+              return `%Cn!${constant_val}`;
+            case 'boolean':
+              return constant_val ? `%Ct!` : `%Cf!`;
+          }
+        },
+        (v) => {
+          if (!v.startsWith('%C')) return new DeFailure('Not a constant');
+
+          if (typeof constant_val === 'string') {
+            if (!v.startsWith('%Cs!'))
+              return new DeFailure('Not expected constant, wanted string');
+
+            const val = v.slice(4);
+            if (val !== constant_val)
+              return new DeFailure(
+                'Not expected constant, wanted different string',
+              );
+
+            return constant_val;
+          } else if (typeof constant_val === 'number') {
+            if (!v.startsWith('%Cn!'))
+              return new DeFailure('Not expected constant, wanted number');
+
+            const val = v.slice(4);
+            if (val !== `${constant_val}`)
+              return new DeFailure(
+                'Not expected constant, wanted different number',
+              );
+
+            return constant_val;
+          }
+
+          if (constant_val && v === '%Ct!') {
+            return constant_val;
+          } else if (v === '%Cf!') {
+            return constant_val;
+          } else {
+            return new DeFailure(
+              'Not expected constant, wanted different boolean',
+            );
+          }
+        },
+      );
+    },
   };
 
   const versionable_object = <T extends MappedToSerde<V>, V extends object>(

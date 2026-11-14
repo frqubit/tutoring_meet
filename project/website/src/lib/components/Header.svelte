@@ -76,7 +76,7 @@
                 {/if}
             {/await}
             {#await userInfo then userInfo}
-                {#if dev || userInfo.value?.is_administrator}
+                {#if userInfo.value?.is_administrator || userInfo.value?.is_masquerader}
                     <AdminBe />
                 {/if}
 

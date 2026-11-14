@@ -31,10 +31,7 @@ export class UserInfoCls {
         } else {
           const any_version_val = localVal;
 
-          if (
-            "is_administrator" in any_version_val &&
-            "created" in any_version_val
-          ) {
+          if ("_version" in any_version_val) {
             // Check if it needs to be reset anyway from the cookie
             const tauth_cookie = getCookie("TAUTH") || "";
             if (!tauth_cookie) {
@@ -56,8 +53,7 @@ export class UserInfoCls {
 
             this.value = any_version_val;
           } else {
-            // Just reset the key at this point, this is V1 or V2
-            // V1 doesn't have is_administrator and V2 doesn't have created
+            // Reset old userinfo's and get new ones
             this.value = null;
           }
         }

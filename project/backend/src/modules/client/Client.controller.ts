@@ -45,13 +45,19 @@ export class ClientController {
     @Res() res: Response,
   ): ControllerType<typeof Handlers.FindAll> {
     return await Handlers.FindAll.ControllerCall(req, res, async (_data) => {
-      return execute_if_administrator(this.authService, req, res, async () => {
-        const clients = await this.clientService.findAll();
-        return clients.map((c) => ({
-          ...c,
-          user_account: c.user_account || null,
-        }));
-      });
+      return execute_if_authorized(
+        this.authService,
+        req,
+        res,
+        async () => {
+          const clients = await this.clientService.findAll();
+          return clients.map((c) => ({
+            ...c,
+            user_account: c.user_account || null,
+          }));
+        },
+        (authTkn) => authTkn?.groups.masquerader ?? false,
+      );
     });
   }
 
@@ -258,7 +264,10 @@ export class ClientController {
 
             return val;
           },
-          (authTkn) => authTkn?.user?.userid == data.params.id,
+          (authTkn) =>
+            C_MYSELF.matches(data.params.id)
+              ? authTkn?.user?.userid !== undefined
+              : authTkn?.user?.userid == data.params.id,
         );
       },
     );

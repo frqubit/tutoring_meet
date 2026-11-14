@@ -30,6 +30,20 @@ export const Version = [
     expires: BuiltinSerdeType.date,
     is_administrator: BuiltinSerdeType.boolean,
   }),
+  BuiltinSerdeType.versionable_object({
+    _version: BuiltinSerdeType.constant(4),
+    username: BuiltinSerdeType.string,
+    client: BuiltinSerdeType.nullable(
+      BuiltinSerdeType.object({
+        id: BuiltinSerdeType.number,
+        name: BuiltinSerdeType.string,
+      }),
+    ),
+    created: BuiltinSerdeType.date,
+    expires: BuiltinSerdeType.date,
+    is_administrator: BuiltinSerdeType.boolean,
+    is_masquerader: BuiltinSerdeType.boolean,
+  }),
 ] as const;
 
 export const LatestVersion = Version[Version.length - 1] as LastElement<

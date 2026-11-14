@@ -29,6 +29,21 @@ export const Version = [
     expires: BuiltinSerdeType.date,
     _check: BuiltinSerdeType.string,
   }),
+  BuiltinSerdeType.versionable_object({
+    user: BuiltinSerdeType.nullable(
+      BuiltinSerdeType.object({
+        username: BuiltinSerdeType.string,
+        userid: BuiltinSerdeType.number,
+      }),
+    ),
+    groups: BuiltinSerdeType.object({
+      administrator: BuiltinSerdeType.boolean,
+      masquerader: BuiltinSerdeType.boolean,
+    }),
+    created: BuiltinSerdeType.date,
+    expires: BuiltinSerdeType.date,
+    _check: BuiltinSerdeType.string,
+  }),
 ] as const;
 
 export const LatestVersion = Version[Version.length - 1] as LastElement<
