@@ -12,11 +12,7 @@ import { enforce, OptionalIfUndefined } from './type_utils';
 import request from 'supertest';
 import { DeFailure, Serde, SerdeT, SerFailure } from './serde_utils';
 import { fail } from 'node:assert';
-import {
-  LatestVersion as LatestAuthTokenVersion,
-  LatestFormat as LatestAuthTokenFormat,
-  AnyVersion as AnyAuthTokenVersion,
-} from '@/src/webdata/auth_token';
+import { AnyVersion as AnyAuthTokenVersion } from '@/src/webdata/auth_token';
 import {
   PATH as CLIENT_PATH,
   Handlers as ClientHandlers,

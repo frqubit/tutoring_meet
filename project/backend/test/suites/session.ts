@@ -308,7 +308,10 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
       await setTimeout(1100);
 
       await Testers.Session.Submit(
-        { params: { id: session.id, variant: SessionCompletion.COMPLETED } },
+        {
+          params: { id: session.id, variant: SessionCompletion.COMPLETED },
+          body: ['a', 'b', 'c'],
+        },
         (val) => {
           if (val !== null) {
             throw new Error(`Error from server: ${val.message}`);
@@ -321,7 +324,10 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
       });
 
       await Testers.Session.Submit(
-        { params: { id: session2.id, variant: SessionCompletion.NOSHOW } },
+        {
+          params: { id: session2.id, variant: SessionCompletion.NOSHOW },
+          body: ['a', 'b', 'c'],
+        },
         (val) => {
           if (val !== null) {
             throw new Error(`Error from server: ${val.message}`);
@@ -334,7 +340,10 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
       });
 
       await Testers.Session.Submit(
-        { params: { id: session3.id, variant: SessionCompletion.LATECANCEL } },
+        {
+          params: { id: session3.id, variant: SessionCompletion.LATECANCEL },
+          body: ['a', 'b', 'c'],
+        },
         (val) => {
           if (val !== null) {
             throw new Error(`Error from server: ${val.message}`);
@@ -349,6 +358,7 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
       await Testers.Session.Submit(
         {
           params: { id: pastSession.id, variant: SessionCompletion.COMPLETED },
+          body: ['a', 'b', 'c'],
         },
         (val) => {
           if (val === null) {
@@ -363,6 +373,7 @@ export const TESTS = gen_e2e_tests('SessionController', (gen) => {
             id: futureSession.id,
             variant: SessionCompletion.COMPLETED,
           },
+          body: ['a', 'b', 'c'],
         },
         (val) => {
           if (val === null) {

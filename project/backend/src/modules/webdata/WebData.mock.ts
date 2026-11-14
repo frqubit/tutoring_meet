@@ -5,11 +5,12 @@ import { S3_BASE_PATH } from '@/src/config';
 export class MockWebDataService {
   private _storage: Record<string, string | Buffer> = {};
 
-  public saveSerdeToFile<T extends Serde<any>>(
+  // eslint-disable-next-line @typescript-eslint/require-await
+  public async saveSerdeToFile<T extends Serde<any>>(
     serde: T,
     key: string,
     value: SerdeT<T>,
-  ): null | Error {
+  ): Promise<null | Error> {
     const serialized = serde.ser(value);
     if (serialized instanceof SerFailure)
       return gen_error(`cannot serialize requested to file`);
@@ -19,16 +20,21 @@ export class MockWebDataService {
     return null;
   }
 
-  public saveBufferToFile(key: string, value: Buffer): null | Error {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  public async saveBufferToFile(
+    key: string,
+    value: Buffer,
+  ): Promise<null | Error> {
     this._storage[`${S3_BASE_PATH}/${key}`] = value;
 
     return null;
   }
 
-  public readSerdeFromFile<T extends Serde<any>>(
+  // eslint-disable-next-line @typescript-eslint/require-await
+  public async readSerdeFromFile<T extends Serde<any>>(
     serde: T,
     key: string,
-  ): SerdeT<T> | Error {
+  ): Promise<SerdeT<T> | Error> {
     const val = this._storage[`${S3_BASE_PATH}/${key}`];
     if (!(typeof val == 'string')) return gen_error(`does not contain string`);
 
@@ -46,7 +52,8 @@ export class MockWebDataService {
     }
   }
 
-  public readBufferFromFile(key: string): Buffer | Error {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  public async readBufferFromFile(key: string): Promise<Buffer | Error> {
     const val = this._storage[`${S3_BASE_PATH}/${key}`];
     if (typeof val == 'string') return gen_error(`does not contain string`);
 

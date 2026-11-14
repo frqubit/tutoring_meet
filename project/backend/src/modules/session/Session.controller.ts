@@ -171,7 +171,7 @@ export class SessionController {
       req,
       res,
       async (data) => {
-        return execute_if_administrator(
+        return execute_if_authorized(
           this.authService,
           req,
           res,
@@ -182,50 +182,26 @@ export class SessionController {
               throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
             }
 
-            if (session.completed || session.every == 0) {
-              throw new HttpException(
-                'Not recurring',
-                HttpStatus.UNPROCESSABLE_ENTITY,
-              );
+            if (
+              session.completed != SessionCompletion.NONE ||
+              session.every == 0
+            ) {
+              throw new HttpException('Not recurring', HttpStatus.CONFLICT);
             }
 
             const sessions = get_n_occurrences(session, MAX_RECURS);
 
             return sessions;
           },
-          async () => {
-            const myClient = await this.clientService.findOneOfTokens(req);
-
-            if (myClient == null)
-              throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
-
+          async (authTkn) => {
             const session = await this.sessionService.findOne(data.params.id);
-            if (session == null)
-              throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
 
-            // Check if any student has this client
-            let allowed = false;
-            for (const student of session.students) {
-              if (student.client.id == myClient.id) {
-                allowed = true;
-                break;
-              }
-            }
+            const student_match =
+              session?.students.find(
+                (s) => s.client.id == authTkn?.user?.userid,
+              ) ?? null;
 
-            if (!allowed) {
-              throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
-            }
-
-            if (session.completed || session.every == 0) {
-              throw new HttpException(
-                'Not recurring',
-                HttpStatus.UNPROCESSABLE_ENTITY,
-              );
-            }
-
-            const sessions = get_n_occurrences(session, MAX_RECURS);
-
-            return sessions;
+            return student_match !== null;
           },
         );
       },

@@ -260,9 +260,7 @@ export class ClientController {
               students: ss.students,
             }));
 
-            const val = repeat_dates_weekly(with_students, 20);
-
-            return val;
+            return with_students;
           },
           (authTkn) =>
             C_MYSELF.matches(data.params.id)
